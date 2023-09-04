@@ -2,13 +2,13 @@ Kmer2vec-Pytorch
 ========
 This implementation is based on the [original kmer2vec model by mais4719 (Magnus Isaksson)](https://github.com/mais4719/kmer2vec) as a Pytorch adaptation. 
 The goal of this implementation is to make the code more optimized for performance, improve modularity, and 
-to track runtime progress via tqdm.
+track runtime progress via tqdm.
 
 In this implementation, I was unable to import pybedtools and thus resorted the use used of subprocess to call bedtools instead. 
 This is required for kmer generation in the `reference_vocab_torch.py` script.
 
 > #### Library requirements
-* pytorch
+* pytorch (including cudatoolkit if using GPU)
 * tqdm
 * numpy
 * pysam
