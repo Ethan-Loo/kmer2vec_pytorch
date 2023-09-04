@@ -1,3 +1,66 @@
+Kmer2vec-Pytorch
+========
+This implementation is based on the [original kmer2vec model by mais4719 (Magnus Isaksson)](https://github.com/mais4719/kmer2vec) as a Pytorch adaptation. 
+The goal of this implementation is to make the code more optimized for performance, improve modularity, and 
+to track runtime progress via tqdm.
+
+In this implementation, I was unable to import pybedtools and thus resorted the use used of subprocess to call bedtools instead. 
+This is required for kmer generation in the `reference_vocab_torch.py` script.
+
+> #### Library requirements
+* pytorch
+* tqdm
+* numpy
+* pysam<br>
+> native libraries:
+* subprocess
+* os
+* argparse
+* sys
+* multiprocessing
+* threading<br>
+> other tools:
+* samtools - for indexing
+* bedtools - for bed file processing as a replacement for pybedtools
+
+### Pytorch script inputs
+In the updated code, input arguments are passed via argparse. The parameters are largely the same as the original.
+
+To run the reference vocabulary generation script:
+```
+python reference_vocab_torch.py \
+    --fa reference_vocabulary/GRCh38_full_hs38d1_decoy.fa \
+    --output reference_vocabulary/all_6-mers.tsv \
+    --window_size 6 \ k-mer/window size in base pairs (default = 6 bp).
+    -p 10 \ # number of threads to use
+    # optional params
+    --select 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16 \ #Select chromosomes to analyze.
+    --filter_str "SINE,LINE" #Filter case-sensitive strings.
+    --bed_file reference_vocabulary/GRCh38_full_hs38d1_decoy.fa.out.bed #Restrict the region(s) to analyze by one or more bed-files.
+    
+```
+
+To run the kmer2vec pyrotch model:
+```
+python kmer2vec_torch.py \
+    --fa reference_vocabulary/GRCh38_full_hs38d1_decoy.fa \
+    --vocab reference_vocabulary/all_6-mers.tsv \
+    --window_size 6 \ k-mer/window size in base pairs (default = 6 bp).
+    --padding 10 \ # number of threads to use
+    --embedding_size 100 \ # size of the embedding vector
+    --num_neg_samples 100 \ # number of negative samples
+    --learning_rate 0.8 \ # learning rate
+    --epochs 10 \ # number of epochs
+    --batch_size 1000 \ # batch size
+    --output kmer2vec_embeddings.tsv # output file
+
+```
+
+<br>
+
+---
+From the [original README](https://github.com/mais4719/kmer2vec/blob/master/README.md):
+
 kmer2vec
 ========
 Unsupervised approach for feature (kmer embeddings) extraction from a provided reference genome. This
