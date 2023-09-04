@@ -11,13 +11,23 @@ This is required for kmer generation in the `reference_vocab_torch.py` script.
 * pytorch
 * tqdm
 * numpy
-* pysam<br>
+* pysam
+> To run notebooks:
+* biopython
+* pandas
+* scikit-learn
+* scypy
+* matplotlib
+* six
+* mpl_toolkits
 > native libraries:
 * subprocess
 * os
 * argparse
 * sys
 * multiprocessing
+* collections
+* glob
 * threading<br>
 > other tools:
 * samtools - for indexing
