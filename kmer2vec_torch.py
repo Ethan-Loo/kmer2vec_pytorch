@@ -286,8 +286,8 @@ def calculate_total_batches(fa_file, chroms, batch_size, min_length, max_length,
     for chrom in chroms:
         with pysam.FastaFile(fa_file) as ref:
             chr_seq = ref.fetch(chrom)
-            num_possible_batches = len(chr_seq) - 2 * padding - 2 * max_length + 1  # Subtract padding correctly
-            num_batches = math.ceil(num_possible_batches / batch_size) * 2
+            num_possible_batches = len(chr_seq) - 2 * padding - 2 * max_length + 1
+            num_batches = math.ceil(num_possible_batches / batch_size) * 2 # Account for reverse complement
             total_batches += num_batches
 
     return total_batches
