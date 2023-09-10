@@ -2,7 +2,7 @@ Kmer2vec-Pytorch
 ========
 This implementation is based on the [original kmer2vec model by mais4719 (Magnus Isaksson)](https://github.com/mais4719/kmer2vec) as a Pytorch adaptation. 
 The goal of this implementation is to make the code more optimized for performance, improve modularity, and 
-track runtime progress via tqdm.
+track runtime progress via `tqdm`.
 
 In this implementation, I was unable to import pybedtools and thus resorted the use used of subprocess to call bedtools instead. 
 This is required for kmer generation in the `reference_vocab_torch.py` script.
@@ -70,7 +70,7 @@ python kmer2vec_torch.py \
 
 #### Known issues
 
-The `Batches` TQDM progress bar currently lacks accuracy during the training process.
+The `Batches` `tqdm` progress bar currently lacks accuracy during the training process.
 The total amount of training batches is currently estimated by a rough approximation function that requires refinement.
 
 Hanging during chromosome selection:
@@ -81,9 +81,9 @@ Hanging during chromosome selection:
 
 There are multiple changes made in this implementation:
 1. The optimization algorithm is changed from SGD to RAdam. 
-2. The original code did not sure the embeddings in the tsv file. This is added to the code. 
+2. The original code did not store the embeddings in the tsv file. This is added to the code. 
 The embeddings may still need to be parsed from their respective columns to be used in downstream applications.
-3. TQDM has been added to track the progress of the library generation in the metadata and to trask training progress. 
+3. `tqdm` has been added to track the progress of the library generation in the metadata and to trask training progress. 
 This allows for better tracking of the runtime and estimated completion time and allows for the user to see the progress of the code.
 4. There are some minor loop optimizations into comprehensions improve runtime performance.
 
@@ -99,7 +99,7 @@ enough for more modest resources: using up to 2 CPU cores. 5GB of RAM, and appro
 Training a 10-mer model required considerably higher resources at approximately 8 cores, 15GB VRAM, and the more GPU compute capacity.
 
 Model convergence appears to occur quickly, however, suggesting that a full reference assembly may not be necessary to obtain accurate embeddings.
-More time and testing are needed to confirm this. Currently, the metadata are not generated until training is complete and embeddings are only saved between epochs in a numpy file. 
+More time and testing are needed to confirm this, and this is also contingent upon the reference being used. Currently, the metadata are not generated until training is complete and embeddings are only saved between epochs in a numpy file. 
 
 <br>
 
