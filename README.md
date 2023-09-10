@@ -12,6 +12,7 @@ This is required for kmer generation in the `reference_vocab_torch.py` script.
 * tqdm
 * numpy
 * pysam
+* pybedtools (not used in this implementation, but needed for the original implementation)
 > To run notebooks:
 * biopython
 * pandas
@@ -32,6 +33,7 @@ This is required for kmer generation in the `reference_vocab_torch.py` script.
 > other tools:
 * samtools - for indexing
 * bedtools - for bed file processing as a replacement for pybedtools
+
 
 ### Pytorch script inputs
 In the updated code, input arguments are passed via argparse. The parameters are largely the same as the original.
@@ -65,6 +67,39 @@ python kmer2vec_torch.py \
     --output kmer2vec_embeddings.tsv # output file
 
 ```
+
+#### Known issues
+
+The `Batches` TQDM progress bar currently lacks accuracy during the training process.
+The total amount of training batches is currently estimated by a rough approximation function that requires refinement.
+
+Hanging during chromosome selection:
+- The training process is stalled when only one chromosome is used in the fasta file. 
+- On occasion, the training process will hang when multiple chromosomes are selected as well. This does not occur consistently and may be due to a memory leak or a deadlock in the code.
+
+### Notes about the key changes made to this version
+
+There are multiple changes made in this implementation:
+1. The optimization algorithm is changed from SGD to RAdam. 
+2. The original code did not sure the embeddings in the tsv file. This is added to the code. 
+The embeddings may still need to be parsed from their respective columns to be used in downstream applications.
+3. TQDM has been added to track the progress of the library generation in the metadata and to trask training progress. 
+This allows for better tracking of the runtime and estimated completion time and allows for the user to see the progress of the code.
+4. There are some minor loop optimizations into comprehensions improve runtime performance.
+
+#### Notes on kmer scaling and training time
+
+As the kmer size increases, the number of kmers increases exponentially. The training time scales with the number and size of the kmers due to their relational complexity.
+The training time is also dependent on the number of negative samples and the embedding size. 
+Larger kmers will require more resources to train including a higher CPU core count and GPU memory.
+
+As an example, training a 5-mer model with a batch size of 512, 100 negative samples, and an embedding size of 5 on the entire GRCh38 
+Homo Sapiens reference assembly will take approximately 56 hours/epoch. This level of embedding and kmer size is small 
+enough for more modest resources: using up to 2 CPU cores. 5GB of RAM, and approx. 2.5 GB of VRAM. <br>
+Training a 10-mer model required considerably higher resources at approximately 8 cores, 15GB VRAM, and the more GPU compute capacity.
+
+Model convergence appears to occur quickly, however, suggesting that a full reference assembly may not be necessary to obtain accurate embeddings.
+More time and testing are needed to confirm this. Currently, the metadata are not generated until training is complete and embeddings are only saved between epochs in a numpy file. 
 
 <br>
 

@@ -3,7 +3,7 @@
 Vector Representations of genomic k-mers
 (Skip-gram Model)
 Original Author: Magnus Isaksson
-Converted to Pytorch by: Ethan Loo
+Converted to Pytorch with modifications by: Ethan Loo
 """
 
 import os
@@ -49,10 +49,12 @@ class Kmer2Vec(nn.Module):
 
         self.build_graph()
 
-        self.metadata_file = create_metadata(os.path.join(args.log_dir,
-                                            f'{self.save_path}metadata{args.min_kmer_size}{args.max_kmer_size}.tsv'),
-                                             args.min_kmer_size,
-                                             args.max_kmer_size)
+        # self.metadata_file = create_metadata(os.path.join(args.save_path,
+        #                                     f'{self.save_path}metadata{args.min_kmer_size}{args.max_kmer_size}.tsv'),
+        #                                      args.min_kmer_size,
+        #                                      args.max_kmer_size)
+        self.metadata_filename = os.path.join(args.save_path,
+                                              f'{self.save_path}metadata{args.min_kmer_size}_{args.max_kmer_size}.tsv')
 
 
     def setup_summaries(self):
@@ -60,7 +62,7 @@ class Kmer2Vec(nn.Module):
         args = self.args
 
         # Initialize SummaryWriter
-        writer = SummaryWriter(os.path.join(args.log_dir, 'train'))
+        writer = SummaryWriter(os.path.join(args.save_path, 'train_logs'))
 
         # Summary variables
         loss_op = self.loss.item()  # Assuming self.loss is a tensor representing the loss
@@ -159,8 +161,8 @@ class Kmer2Vec(nn.Module):
 
     def train(self):
         args = self.args
-        optimizer = optim.SGD(self.parameters(), lr=args.learning_rate)
-        writer = SummaryWriter(os.path.join(args.log_dir, 'train'))
+        optimizer = optim.RAdam(self.parameters(), lr=args.learning_rate)
+        writer = SummaryWriter(os.path.join(args.save_path, 'train'))
 
         embedding_saver = torch.save
         output_file_template = os.path.join(args.save_path,
@@ -195,6 +197,7 @@ class Kmer2Vec(nn.Module):
 
                 if old_chrom != chrom:
                     print('Starting training on {}...'.format(chrom))
+                    print(f'Epoch {epoch} ({chroms_done}/{self.NUMBER_OF_CHRS} done)')
                     chroms_done += 1
                     old_chrom = chrom
 
@@ -244,7 +247,7 @@ class Kmer2Vec(nn.Module):
                                        for k in range(top_k)]
                         print('Nearest to {} -> ({})'.format(valid_kmer, ', '.join(close_kmers)))
 
-                    embedding_saver(self.state_dict(), os.path.join(args.log_dir, 'model.pth'))
+                    embedding_saver(self.state_dict(), os.path.join(args.save_path, 'model.pth'))
 
                 if index % 500000 == 0:
                     self.save_vocab(output_file_template.format(min_size=args.min_kmer_size,
@@ -260,6 +263,15 @@ class Kmer2Vec(nn.Module):
                                                     emb_size=args.embedding_size,
                                                     epoch=epoch,
                                                     index=index))
+
+        # After training, create the metadata file with embeddings
+        metadata_filename = os.path.join(self.args.save_path,
+                                         f'{self.save_path}metadata{self.args.min_kmer_size}_{self.args.max_kmer_size}.tsv')
+        create_metadata(metadata_filename, self, self.args.min_kmer_size, self.args.max_kmer_size)
+
+        # Update the self.metadata_filename to point to the newly created metadata file
+        self.metadata_filename = metadata_filename
+
         self.setup_summaries()
 
 
@@ -380,37 +392,65 @@ def batch_generator(batch_size, fa_file, chroms,
             else:
                 i += 1
 
-def create_metadata(filename, min_length=3, max_length=5):
+def create_metadata(filename, model, min_length=3, max_length=5):
     print('Creating metadata file:', filename)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     kmer_sizes = np.arange(min_length, max_length + 1)
     vocabulary_size = np.sum(4 ** kmer_sizes)
-    tmpl_str = '{name}\t{length}\t{gc}\t{ent}\n'
+
+    # Determine the embedding size
+    embedding_size = model.embedding_size
+
+    # Generate the column names dynamically
+    column_names = ['name', 'length', 'gc', 'entropy']
+    embedding_columns = [f'embedding_{i}' for i in range(embedding_size)]
+    norm_embedding_columns = [f'norm_embedding_{i}' for i in range(embedding_size)]
+    column_names.extend(embedding_columns)
+    column_names.extend(norm_embedding_columns)
+
+    # Create placeholders for each column with the correct number of placeholders
+    placeholder = '\t'.join(['{}'] * len(column_names))
+
+    # Use the generated column names in tmpl_str
+    tmpl_str = '\t'.join(column_names) + '\n'
 
     # Generate all possible sequences
     seq_numbers = np.arange(0, vocabulary_size)
-    # seqs = [number2multisize_patten(seq_numb, min_length, max_length, device) for seq_numb in seq_numbers]
-
-    # # Use tqdm to add a progress bar to the comprehension
     seqs = [number2multisize_patten(seq_numb, min_length, max_length, device) for seq_numb in tqdm(seq_numbers)]
 
     # Calculate GC and sequence entropy for all sequences
     gc_values = [round(gc(seq), 2) for seq in seqs]
     entropy_values = [round(sequence_entropy(seq), 2) for seq in seqs]
 
+    # Calculate embeddings for all sequences
+    embeddings = model.embeddings(torch.LongTensor(seq_numbers).to(device))
+    # Calculate the normalized embeddings for all sequences
+    norm_embeddings = embeddings / torch.norm(embeddings, dim=1, keepdim=True)
+
     with open(filename, 'w') as f:
-        f.write(tmpl_str.format(name='name', length='length',
-                                gc='gc', ent='entropy'))
-        for seq_numb, seq, gc_val, entropy_val in zip(seq_numbers, seqs, gc_values, entropy_values):
-            f.write(tmpl_str.format(name=seq, length=len(seq),
-                                    gc=gc_val, ent=entropy_val))
+        # Use the generated column names
+        f.write(tmpl_str)
+
+        for seq_numb, seq, gc_val, entropy_val, embedding, norm_embedding in zip(seq_numbers, seqs, gc_values, entropy_values, embeddings, norm_embeddings):
+            # Create lists of embedding and norm_embedding values
+            embedding_values = embedding.detach().cpu().numpy()
+            norm_embedding_values = norm_embedding.detach().cpu().numpy()
+
+            # Format embedding and norm_embedding values as strings
+            embedding_str = '\t'.join(str(val) for val in embedding_values)
+            norm_embedding_str = '\t'.join(str(val) for val in norm_embedding_values)
+
+            # Write the row to the file
+            f.write(placeholder.format(seq, len(seq), gc_val, entropy_val, *embedding_values, *norm_embedding_values) + '\n')
 
     return filename
 
+
+
 def main(args):
 
-    if not os.path.exists(args.log_dir):
-        os.makedirs(args.log_dir)
+    if not os.path.exists(args.save_path):
+        os.makedirs(args.save_path)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print("Using device:", torch.cuda.get_device_name(0))
@@ -439,7 +479,6 @@ if __name__ == '__main__':
     parser.add_argument('--num_neg_samples', type=int, default=100, help='Negative samples per training example.')
 
     parser.add_argument('--interactive', action='store_true', help='Jumps into an iPython shell for debugging.')
-    parser.add_argument('--log_dir', type=str, default='.', help='Path to log directory.')
     parser.add_argument('--embeddings_file', type=str, default=None, help='Path to previously embeddings to load (numpy format).')
 
     args = parser.parse_args()
