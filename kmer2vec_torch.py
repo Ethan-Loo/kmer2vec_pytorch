@@ -257,16 +257,21 @@ class Kmer2Vec(nn.Module):
                                                                 epoch=epoch,
                                                                 index=index))
 
-        self.save_vocab(output_file_template.format(min_size=args.min_kmer_size,
-                                                    max_size=args.max_kmer_size,
-                                                    padding=args.padding,
-                                                    emb_size=args.embedding_size,
-                                                    epoch=epoch,
-                                                    index=index))
+            self.save_vocab(output_file_template.format(min_size=args.min_kmer_size,
+                                                        max_size=args.max_kmer_size,
+                                                        padding=args.padding,
+                                                        emb_size=args.embedding_size,
+                                                        epoch=epoch,
+                                                        index=index))
+        print(info_str.format(chrom,
+                              chroms_done,
+                              self.NUMBER_OF_CHRS,
+                              epoch,
+                              index,
+                              loss.item()))
 
         # After training, create the metadata file with embeddings
-        metadata_filename = os.path.join(self.args.save_path,
-                                         f'{self.save_path}metadata{self.args.min_kmer_size}_{self.args.max_kmer_size}.tsv')
+        metadata_filename = os.path.join(f'{self.save_path}metadata{self.args.min_kmer_size}_{self.args.max_kmer_size}.tsv')
         create_metadata(metadata_filename, self, self.args.min_kmer_size, self.args.max_kmer_size)
 
         # Update the self.metadata_filename to point to the newly created metadata file
