@@ -223,7 +223,7 @@ class Kmer2Vec(nn.Module):
 
                 self.global_step += 1
 
-                if index % 20000 == 0:
+                if index % int(total_batches*.1) == 0:
                     print(info_str.format(chrom,
                                           chroms_done,
                                           self.NUMBER_OF_CHRS,
@@ -231,7 +231,7 @@ class Kmer2Vec(nn.Module):
                                           index,
                                           loss.item()))
 
-                if index % 50000 == 0:
+                if index % int(total_batches*.2) == 0:
                     sim = self.calculate_cosine_similarity()
                     for i in range(self.VALID_SET_SIZE):
                         valid_kmer = number2multisize_patten(self.valid_kmers[i],
