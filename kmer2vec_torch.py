@@ -23,7 +23,7 @@ from utils_torch import multisize_patten2number, number2multisize_patten
 from utils_torch import tsv_file2kmer_vector
 from utils_torch import read_faidx
 from utils_torch import reverse_complement, gc, sequence_entropy
-
+import time
 
 class Kmer2Vec(nn.Module):
     """ Kmer2Vec model."""
@@ -161,6 +161,7 @@ class Kmer2Vec(nn.Module):
 
     def train(self):
         args = self.args
+        # optimizer = optim.SGD(self.parameters(), lr=args.learning_rate)
         optimizer = optim.RAdam(self.parameters(), lr=args.learning_rate)
         writer = SummaryWriter(os.path.join(args.save_path, 'train'))
 
@@ -280,11 +281,19 @@ class Kmer2Vec(nn.Module):
         self.setup_summaries()
 
 def calculate_total_batches(fa_file, chroms, batch_size, min_length, max_length, padding):
+
+    len_diff = max_length - min_length
+    len_range = [i for i in range(min_length, max_length+1)][::-1]
+    len_range[-1] = 1
+    context_mult = math.prod(len_range)
+
+    # print(sum(math.ceil((len(pysam.FastaFile(fa_file).fetch(chrom))))for chrom in chroms))
     total_batches = sum(
         math.ceil((len(pysam.FastaFile(fa_file).fetch(chrom)) - (batch_size // 2)) / batch_size) * 2
-        for chrom in chroms
-    )
-    return total_batches
+        for chrom in chroms) * context_mult
+    print(total_batches)
+    exit()
+    # return total_batches
 
 def context_generator(fa_file, chroms, min_length=3, max_length=5, padding=1):
     """ Creates context and target k-mers using provided fasta and
@@ -448,6 +457,7 @@ def create_metadata(filename, model, min_length=3, max_length=5):
 
 def main(args):
 
+    start_time = time.time()
     if not os.path.exists(args.save_path):
         os.makedirs(args.save_path)
 
@@ -456,7 +466,12 @@ def main(args):
 
     model = Kmer2Vec(args).to(device)
     model.train()
+    finish = time.time() - start_time
+    hours = int(finish//3600)
+    minutes = int((finish % 3600)//60)
+    seconds = int(finish % 60)
 
+    print(f'Time to complete: {hours} hours, {minutes} minues, {seconds} seconds')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Vector Representations of genomic k-mers (Skip-gram Model)')
