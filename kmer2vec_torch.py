@@ -287,13 +287,11 @@ def calculate_total_batches(fa_file, chroms, batch_size, min_length, max_length,
     len_range[-1] = 1
     context_mult = math.prod(len_range)
 
-    # print(sum(math.ceil((len(pysam.FastaFile(fa_file).fetch(chrom))))for chrom in chroms))
     total_batches = sum(
         math.ceil((len(pysam.FastaFile(fa_file).fetch(chrom)) - (batch_size // 2)) / batch_size) * 2
         for chrom in chroms) * context_mult
-    print(total_batches)
-    exit()
-    # return total_batches
+
+    return total_batches
 
 def context_generator(fa_file, chroms, min_length=3, max_length=5, padding=1):
     """ Creates context and target k-mers using provided fasta and
