@@ -282,7 +282,6 @@ class Kmer2Vec(nn.Module):
 
 def calculate_total_batches(fa_file, chroms, batch_size, min_length, max_length, padding):
 
-    len_diff = max_length - min_length
     len_range = [i for i in range(min_length, max_length+1)][::-1]
     len_range[-1] = 1
     context_mult = math.prod(len_range)
